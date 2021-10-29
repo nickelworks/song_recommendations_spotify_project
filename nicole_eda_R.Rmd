@@ -1,0 +1,388 @@
+
+```{r message=FALSE, warning=FALSE}
+
+#install.packages("tidyverse")
+#install.packages("dplyr")
+#install.packages("ggplot2")
+#install.packages("plotly")
+#install.packages("corrplot")
+#install.packages("factoextra")
+#install.packages("plyr")
+#install.packages("RColorBrewer")
+#install.packages("funModeling")
+#install.packages("knitr")
+
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+library(plotly)
+library(corrplot)
+library(factoextra)
+library(plyr)
+library(RColorBrewer)
+library(funModeling)
+library(knitr)
+```
+
+loading data
+```{r}
+set.seed(13232767)
+spotify <- read.csv("spotify_songs_test.csv")
+```
+
+```{r}
+glimpse(spotify)
+```
+
+```{r}
+colSums(is.na(spotify))
+```
+Removed NAs
+```{r}
+spotify <- na.omit(spotify)
+```
+Removing duplicates
+```{r}
+spotify <- spotify[!duplicated(spotify$track_id),]
+```
+Converting key, mode, genre and sub genre to factors 
+```{r}
+spotify <- spotify %>%
+  mutate(playlist_genre = as.factor(spotify$playlist_genre),
+         playlist_subgenre = as.factor(spotify$playlist_subgenre),
+         mode = as.factor(mode),
+         key = as.factor(key))
+```
+Converting duration_ms to duration in mins (duration_min) 
+```{r}
+spotify <- spotify %>% mutate(duration_min = duration_ms/60000)
+```
+new variables that divide popularity into 4 groups for effective cluster analysis 
+```{r}
+spotify <- spotify %>% 
+  mutate(popularity_group = as.numeric(case_when(
+    ((track_popularity > 0) & (track_popularity < 20)) ~ "1",
+    ((track_popularity >= 20) & (track_popularity < 40))~ "2",
+    ((track_popularity >= 40) & (track_popularity < 60)) ~ "3",
+    TRUE ~ "4"))
+    )
+table(spotify$popularity_group)
+
+```
+removed track_id, track_album_id and playlist_id from the dataset since it is not useful for our analysis
+```{r}
+spotify <- spotify %>% select(-c(track_id, track_album_id, playlist_id))
+summary(spotify)
+```
+Correlation Plot
+```{r}
+df1 <- select(spotify, track_popularity, danceability, energy, loudness, speechiness, acousticness, instrumentalness, liveness, valence, tempo)
+corrplot(cor(df1))
+```
+Histogram: analyzing data distribution of the audio features
+
+```{r}
+spotify_hist <- spotify[,-c(1,2,3,4,5,6,7,8,11,13,20,22)]
+plot_num(spotify_hist)
+```
+BOXPLOTS: 
+
+Energy by genre
+```{r}
+boxplot(energy~playlist_genre, data=spotify,
+        main = "Variation of energy between genres",
+        xlab = "Energy",
+        ylab = "Genre",
+        col = "orange",
+        border = "brown",
+        horizontal = TRUE,
+        notch = TRUE
+)
+```
+EDM songs are highest in energy, as expected!
+
+genre by danceability
+```{r}
+boxplot(danceability~playlist_genre, data=spotify,
+        main = "Variation of danceability between genres",
+        xlab = "Danceability",
+        ylab = "Genre",
+        col = "orange",
+        border = "brown",
+        horizontal = TRUE,
+        notch = TRUE
+)
+```
+genre by liveliness
+```{r}
+boxplot(danceability~playlist_genre, data=spotify,
+        main = "Variation of liveness between genres",
+        xlab = "Liveness",
+        ylab = "Genre",
+        col = "orange",
+        border = "brown",
+        horizontal = TRUE,
+        notch = TRUE
+)
+```
+genre by valence
+```{r}
+boxplot(valence~playlist_genre, data=spotify,
+        main = "Variation of valence between genres",
+        xlab = "Valence",
+        ylab = "Genre",
+        col = "orange",
+        border = "brown",
+        horizontal = TRUE,
+        notch = TRUE
+)
+```
+genre by loudness
+```{r}
+boxplot(loudness~playlist_genre, data=spotify,
+        main = "Variation of loudness between genres",
+        xlab = "Loudness",
+        ylab = "Genre",
+        col = "orange",
+        border = "brown",
+        horizontal = TRUE,
+        notch = TRUE
+)
+```
+
+popularity by accousticness
+```{r}
+spotify$acousticness.scale <- scale(spotify$acousticness)
+spotify %>%
+  select(popularity_group, acousticness.scale, playlist_genre) %>%
+  group_by(popularity_group)%>%
+  filter(!is.na(popularity_group)) %>%
+  filter(!is.na(acousticness.scale))%>%
+  ggplot(mapping = aes(x = acousticness.scale, y = popularity_group, color = playlist_genre))+
+  facet_wrap(~playlist_genre)+
+  geom_point()+
+  theme_minimal()
+```
+
+popularity by valence
+```{r}
+spotify%>%
+  select(popularity_group, valence, playlist_genre) %>%
+  group_by(popularity_group)%>%
+  filter(!is.na(popularity_group)) %>%
+  filter(!is.na(valence))%>%
+  ggplot(mapping = aes(x = popularity_group, y = valence, color = playlist_genre, fill = playlist_genre))+
+  geom_bar(stat = 'identity')+
+  coord_polar()+
+  facet_wrap(~playlist_genre)+
+  theme_minimal()
+```
+energy distribution
+```{r}
+spotify$cut_energy <- cut(spotify$energy, breaks = 10)
+spotify %>%
+  ggplot( aes(x=cut_energy ))+
+  geom_bar(width=0.2) +
+  coord_flip() +
+  scale_x_discrete(name="Energy")  
+```
+speechiness distribution
+```{r}
+spotify$cut_spe <- cut(spotify$speechiness, breaks = 10)
+spotify %>%
+  ggplot( aes(x=cut_spe ))+
+  geom_bar(width=0.2) +
+  coord_flip() +
+  scale_x_discrete(name="Spechiness")  
+```
+tempo and liveness distribution across genre
+```{r}
+spotify$liveness.scale <- scale(spotify$liveness)
+spotify$tempo.scale <- scale(spotify$tempo)
+spotify %>%
+  select(tempo.scale, liveness.scale, playlist_genre) %>%
+  group_by(playlist_genre)%>%
+  filter(!is.na(tempo.scale)) %>%
+  filter(!is.na(liveness.scale))%>%
+  ggplot(mapping = aes(x = tempo.scale, y = liveness.scale, color = playlist_genre, fill = playlist_genre))+
+  geom_bar(stat = 'identity')+
+  coord_polar()+
+  theme_minimal()
+
+```
+
+3D Scatter Plot!!!
+popularity vs danceability vs energy
+```{r}
+spotify_arrange <- spotify[order(-spotify$track_popularity),]
+
+ 
+
+plot_ly(head(spotify_arrange, n=500), x = ~track_popularity, y = ~danceability, z = ~energy, 
+        color = ~playlist_genre, colors = c('magenta', 'green', 'red', 'cyan', 'orange', 'yellow'),size = I(100)) %>%
+  add_markers() %>%
+  layout(scene = list(xaxis = list(title = 'track_popularity'),
+                      yaxis = list(title = 'danceability'),
+                      zaxis = list(title = 'energy')),
+         title = "3D Scatter plot: Track_popularity vs Danceability vs Energy",
+         showlegend = FALSE)
+```
+
+track_popularity vs genre vs subgenre
+```{r}
+spotify_arrange <- spotify[order(-spotify$track_popularity),]
+
+ 
+
+plot_ly(head(spotify_arrange, n=500), x = ~track_popularity, y = ~playlist_genre, z = ~playlist_subgenre, 
+        color = ~playlist_genre, colors = c('magenta', 'green', 'red', 'cyan', 'orange', 'yellow'),size = I(100)) %>%
+  add_markers() %>%
+  layout(scene = list(xaxis = list(title = 'track_popularity'),
+                      yaxis = list(title = 'playlist_genre'),
+                      zaxis = list(title = 'playlist_subgenre')),
+         title = "3D Scatter plot: Track_popularity vs Playlist genre vs Playlisty subgenre",
+         showlegend = FALSE)
+```
+
+Top 10 artist and most famous tracks
+```{r}
+spotify %>%
+  select(track_name, track_artist, track_album_name, playlist_genre, track_popularity)%>%
+  group_by(track_artist)%>%
+  filter(!is.na(track_name))%>%
+  filter(!is.na(track_artist))%>%
+  filter(!is.na(track_album_name))%>%
+  arrange(desc(track_popularity))%>%
+  head(n = 10)%>%
+  ggplot(mapping = aes(x = track_name, y =  track_artist, color = track_artist, fill = track_artist, size = track_popularity ))+
+  geom_point()+
+  coord_polar()+
+  facet_wrap(~playlist_genre)+
+  theme_minimal()+
+  labs(x = 'track_name', y = 'track_artist', title = 'Top ten artists of spotify')+
+  theme(plot.title = element_text(hjust=0.5),legend.position ='bottom')
+```
+
+CLUSTERING
+- Danceability
+- Energy
+- Loudness
+- Speechiness
+- Acousticness
+- Instrumentalness
+- Liveness
+- Valence
+- Tempo
+- Duration_min
+
+Checking the updated dataset since we have certain variables changes for EDA
+```{r}
+str(spotify)
+```
+
+Scaling the numeric variables required for cluster analysis:
+```{r}
+spotify_scaled <- scale(spotify[,-c(1,2,3,4,5,6,7,8,11,13,20,22,23,24,25,26,27)])
+summary(spotify_scaled)
+```
+
+Determining the optimal number of clusters
+```{r}
+wss <- function(data, maxCluster = 9) {
+  SSw <- (nrow(data) - 1) * sum(apply(data, 2, var))
+  SSw <- vector()
+  for (i in 2:maxCluster) {
+    SSw[i] <- sum(kmeans(data, centers = i)$withinss)
+  }
+  plot(1:maxCluster, SSw, type = "o", xlab = "Number of Clusters", ylab = "Within groups sum of squares", pch=19)
+}
+
+wss(spotify_scaled)
+```
+
+k = 7
+K-means clustering
+```{r}
+spotify_kmeans <- kmeans(spotify_scaled, centers = 7)
+spotify_kmeans$size
+
+spotify_kmeans$centers
+
+spotify$cluster <- spotify_kmeans$cluster
+tail(spotify)
+```
+Plotting using 'factoextra':
+
+```{r}
+fviz_cluster(spotify_kmeans, data=spotify_scaled)
+```
+
+goodness of fit tests, 3 values ot check:
+
+1.Within Sum of Squares tot.withinss : signifies the 'length' from each observation to its centroid in each cluster
+
+```{r}
+spotify_kmeans$tot.withinss
+```
+
+2. Total Sum of Squares totss : signifies the 'length' from each observation to global sample mean
+
+```{r}
+spotify_kmeans$totss
+```
+
+3. Between Sum of Squares betweenss : signifies the 'length' from each centroid from each cluster to the global sample mean
+
+```{r}
+spotify_kmeans$betweenss
+```
+
+Another 'goodness' measure can be signifies with a value of betweenss/totss closer the value to 1 or 100%, the better): `betweenss`/`tot.withinss`
+
+```{r}
+((spotify_kmeans$betweenss)/(spotify_kmeans$totss))*100
+```
+
+Good cluster has high similarity characteristics in 1 cluster (low WSS) and maximum difference in characteristics between clusters (high BSS). In addition, it can be marked with a BSS / totss ratio that is close to 1 (100%).
+
+From the unsupervised learning analysis above, we can summarize that K-means clustering can be done using this dataset since we have got a reasonable high value for BSS / totss ratio, 40.78%.
+
+Repeating the same exercise multiple times by adjusting with multiple combinations of variables, we are getting the best fit and optimized model by excluding loudness, tempo and duration_min.
+
+Finding what kind of song characterises each clusters in the optimized model:
+```{r,warning=FALSE}
+spotify %>% 
+  group_by(cluster) %>% 
+  summarise_all(mean) %>% 
+  select(cluster, acousticness, danceability, energy, instrumentalness, speechiness, valence, liveness)
+```
+ 
+Characteristics:
+- Cluster 1: Highest danceability, Highest valence
+- Cluster 2: Highest energy, Lowest acousticness
+- Cluster 3: Lowest instrumentalness, Highest speechiness
+- Cluster 4: Lowest speechiness, Lowest liveness
+- Cluster 5: Lowest acousticness, Highest liveness  
+- Cluster 6: Highest instrumentalness
+- Cluster 7: Highest acousticness, Lowest energy, Lowest valence
+
+SONG RECOMMENDATIONS
+
+Now, let's check the which cluster is my favorite song. My favourite track from the list is Memories by Maroon 5.
+
+```{r}
+spotify %>% 
+  filter(track_name == "Memories - Dillon Francis Remix", track_artist == "Maroon 5")
+```
+
+So my favourite song is in cluster 3.
+
+Now I want to try a new genre, r&b. So let's check the best songs which I should try according to my taste in the r&b genre given that my favourite song is Memories by Maroon 5.
+
+</div>
+
+```{r}
+spotify %>% 
+  filter(cluster == 3, playlist_genre == "r&b") %>% 
+  sample_n(5)
+```
