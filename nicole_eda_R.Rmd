@@ -365,11 +365,9 @@ spotify %>%
   filter(track_name == "Memories - Dillon Francis Remix", track_artist == "Maroon 5")
 ```
 
-So my favourite song is in cluster 3.
+my favorite song is in cluster 3.
 
 Now I want to try a new genre, r&b. So let's check the best songs which I should try according to my taste in the r&b genre given that my favourite song is Memories by Maroon 5.
-
-</div>
 
 ```{r}
 spotify %>% 
