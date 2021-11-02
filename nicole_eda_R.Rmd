@@ -228,7 +228,7 @@ plot_ly(head(spotify_arrange, n=500), x = ~track_popularity, y = ~danceability, 
          showlegend = FALSE)
 ```
 
-track_popularity vs genre vs subgenre
+popularity vs genre vs subgenre
 ```{r}
 spotify_arrange <- spotify[order(-spotify$track_popularity),]
 
@@ -244,7 +244,7 @@ plot_ly(head(spotify_arrange, n=500), x = ~track_popularity, y = ~playlist_genre
          showlegend = FALSE)
 ```
 
-Top 10 artist and most famous tracks
+top 10 artists and most famous tracks
 ```{r}
 spotify %>%
   select(track_name, track_artist, track_album_name, playlist_genre, track_popularity)%>%
@@ -263,23 +263,13 @@ spotify %>%
   theme(plot.title = element_text(hjust=0.5),legend.position ='bottom')
 ```
 
-CLUSTERING
-- Danceability
-- Energy
-- Loudness
-- Speechiness
-- Acousticness
-- Instrumentalness
-- Liveness
-- Valence
-- Tempo
-- Duration_min
+CLUSTERING!
+Variables used: danceability, energy, loudness, speechiness, acousticness, instrumentalness, liveness, valence, tempo, duration_min
 
-Checking the updated dataset since we have certain variables changes for EDA
+Checking the updated dataset for EDA:
 ```{r}
 str(spotify)
 ```
-
 Scaling the numeric variables required for cluster analysis:
 ```{r}
 spotify_scaled <- scale(spotify[,-c(1,2,3,4,5,6,7,8,11,13,20,22,23,24,25,26,27)])
@@ -299,9 +289,9 @@ wss <- function(data, maxCluster = 9) {
 
 wss(spotify_scaled)
 ```
+k = 7, this seems optimal
 
-k = 7
-K-means clustering
+K-means Clustering:
 ```{r}
 spotify_kmeans <- kmeans(spotify_scaled, centers = 7)
 spotify_kmeans$size
