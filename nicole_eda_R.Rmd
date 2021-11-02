@@ -1,4 +1,9 @@
-
+---
+title: "Spotify track EDA and clustering"
+author: "Nicole Wang"
+output: rmd
+---
+import packages
 ```{r message=FALSE, warning=FALSE}
 
 #install.packages("tidyverse")
